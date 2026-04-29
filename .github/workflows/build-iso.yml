@@ -25,6 +25,7 @@ jobs:
           mkdir -p build_dir
           cd build_dir
           
+          # Ubuntu bağımlılık hatalarını aşmak için özel Debian konfigürasyonu
           sudo lb config \
             --distribution bookworm \
             --architecture amd64 \
@@ -34,6 +35,7 @@ jobs:
             --mirror-binary "http://deb.debian.org/debian/" \
             --mirror-chroot-security "http://security.debian.org/debian-security/" \
             --mirror-binary-security "http://security.debian.org/debian-security/" \
+            --keyring-packages "debian-archive-keyring" \
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components quiet splash" \
             --system live \
