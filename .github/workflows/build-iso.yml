@@ -25,8 +25,9 @@ jobs:
           mkdir -p build_dir
           cd build_dir
           
-          # "--linux-packages" parametresi ile Ubuntu'nun linux-generic dayatmasını engelledik
+          # "--mode debian" ve "--initramfs live-boot" eklenerek Ubuntu'nun casper dayatması engellendi
           sudo lb config \
+            --mode debian \
             --distribution bookworm \
             --architecture amd64 \
             --archive-areas "main contrib non-free non-free-firmware" \
@@ -37,6 +38,7 @@ jobs:
             --mirror-binary-security "http://security.debian.org/debian-security/" \
             --keyring-packages "debian-archive-keyring" \
             --linux-packages "linux-image" \
+            --initramfs "live-boot" \
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components quiet splash" \
             --system live \
