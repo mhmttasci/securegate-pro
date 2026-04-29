@@ -1,0 +1,7 @@
+wireguard-tools
+iproute2
+tpm2-tools
+nftables
+curl
+ca-certificates
+nano

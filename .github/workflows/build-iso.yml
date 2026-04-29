@@ -1,0 +1,50 @@
+name: Build SecureGate Live OS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install live-build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y live-build syslinux syslinux-utils squashfs-tools debootstrap
+
+      - name: Configure Build Environment
+        run: |
+          mkdir -p build_dir
+          cd build_dir
+          
+          sudo lb config \
+            --distribution bookworm \
+            --architecture amd64 \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --binary-images iso-hybrid \
+            --bootappend-live "boot=live components quiet splash" \
+            --system live \
+            --apt-indices false \
+            --apt-recommends false
+            
+          sudo cp -a ../config/* ./config/
+
+      - name: Build the ISO
+        run: |
+          cd build_dir
+          sudo lb build
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: securegate-os-amd64
+          path: build_dir/*.iso
+          retention-days: 7
