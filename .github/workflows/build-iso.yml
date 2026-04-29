@@ -1,4 +1,4 @@
-name: Build SecureGate Live OS
+name: Build SecureGate Live OS (Dockerized)
 
 on:
   push:
@@ -15,46 +15,49 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install live-build dependencies
+      # İşletim sistemi derlemesi için "loop" cihazlarına (RAM disk vs.) ihtiyaç vardır.
+      # Bu yüzden pure bir Debian Docker konteynerini "privileged" modda çalıştırıyoruz.
+      - name: Build ISO inside Pure Debian Container
         run: |
-          sudo apt-get update
-          sudo apt-get install -y live-build syslinux syslinux-utils squashfs-tools debootstrap debian-archive-keyring
-
-      - name: Configure Build Environment
-        run: |
-          mkdir -p build_dir
-          cd build_dir
-          
-          # "--mode debian" ve "--initramfs live-boot" eklenerek Ubuntu'nun casper dayatması engellendi
-          sudo lb config \
-            --mode debian \
-            --distribution bookworm \
-            --architecture amd64 \
-            --archive-areas "main contrib non-free non-free-firmware" \
-            --mirror-bootstrap "http://deb.debian.org/debian/" \
-            --mirror-chroot "http://deb.debian.org/debian/" \
-            --mirror-binary "http://deb.debian.org/debian/" \
-            --mirror-chroot-security "http://security.debian.org/debian-security/" \
-            --mirror-binary-security "http://security.debian.org/debian-security/" \
-            --keyring-packages "debian-archive-keyring" \
-            --linux-packages "linux-image" \
-            --initramfs "live-boot" \
-            --binary-images iso-hybrid \
-            --bootappend-live "boot=live components quiet splash" \
-            --system live \
-            --apt-indices false \
-            --apt-recommends false
-            
-          sudo cp -a ../config/* ./config/
-
-      - name: Build the ISO
-        run: |
-          cd build_dir
-          sudo lb build
+          docker run --rm \
+            --privileged \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            debian:bookworm \
+            bash -c "
+              echo '[*] Saf Debian laboratuvarına girildi. Bağımlılıklar kuruluyor...'
+              apt-get update
+              apt-get install -y live-build syslinux syslinux-utils squashfs-tools debootstrap
+              
+              echo '[*] Derleme dizini hazırlanıyor...'
+              mkdir -p build_dir
+              cd build_dir
+              
+              # Artık Ubuntu ortamında olmadığımız için ekstra parametrelere gerek yok, 
+              # Debian kendi doğal ortamında çalışacak.
+              lb config \
+                --mode debian \
+                --distribution bookworm \
+                --architecture amd64 \
+                --archive-areas 'main contrib non-free non-free-firmware' \
+                --binary-images iso-hybrid \
+                --bootappend-live 'boot=live components quiet splash' \
+                --system live \
+                --apt-indices false \
+                --apt-recommends false
+                
+              echo '[*] Konfigürasyonlar kopyalanıyor...'
+              cp -a ../config/* ./config/
+              
+              echo '[*] ISO derlemesi başlıyor...'
+              lb build
+            "
 
       - name: Upload ISO Artifact
         uses: actions/upload-artifact@v4
         with:
           name: securegate-os-amd64
+          # Docker konteyneri işini bitirip kapandığında, ürettiği ISO dosyasını 
+          # GitHub çalışma alanımıza (workspace) bırakmış olacak.
           path: build_dir/*.iso
           retention-days: 7
